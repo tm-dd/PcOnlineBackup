@@ -22,11 +22,11 @@ You can define the number of backups to keep, as well.
 
 How to use:
 
-* Download the files to an different partition.
+* Download the files to a different partition.
 * Change the config file "backup_gpt.cfg" OR "backup_mbr.cfg".
 * Optional, set the values in "mount_backup_sshfs.sh".
 
-Install all necessary software like:
+Install all necessary software, like:
 * bzip2 
 * parted 
 * dump

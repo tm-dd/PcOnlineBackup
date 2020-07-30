@@ -6,14 +6,13 @@ Example system configuration:
 
 	/dev/sda1	-> /boot/efi
 	/dev/sda2	-> linux-swap
-	/dev/sda1	-> physical volume for LVM
+	/dev/sda3	-> physical volume for LVM
 	/dev/sdb	-> /system_backups
 	
 	/dev/mapper/sda-system -> /
 	/dev/mapper/sda-varlog -> /var/log
 
-	The locical volumes "sda-system" and "/dev/mapper/sda-varlog" can 
-	be saved by dump with this script.
+	The locical volumes "sda-system" and "/dev/mapper/sda-varlog" can be saved by dump with this script.
 	To save "/boot/efi" define the TAR backup on this script.
 	All backups (and this scripts) can be saved on "/dev/sdb".
 
@@ -22,7 +21,7 @@ You can define the number of backups to keep, as well.
 
 How to use:
 
-* Download the files to a different partition.
+* Download the files and move they to a different partition.
 * Change the config file "backup_gpt.cfg" OR "backup_mbr.cfg".
 * Optional, set the values in "mount_backup_sshfs.sh".
 

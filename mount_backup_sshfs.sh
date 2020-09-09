@@ -49,6 +49,7 @@ then
     if [ -d "$encfsBackupData" ] && [ -d "$encfsBackupMount" ]
     then
         ENCFSMESSAGE=`echo "${encfsPassword}" | encfs -i 10 -S $encfsBackupData $encfsBackupMount`
+        BACKUPDIR=${encfsBackupMount}'/BACKUP_'${HOSTNAME}'_'${BACKUPTIME}
     else
 	mkdir -p $encfsBackupData $encfsBackupMount
 	echo -e "\nPlease setup encfs (and use the password '$encfsPassword' ), now.\n"

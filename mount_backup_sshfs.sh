@@ -22,12 +22,13 @@ sftpBackupTargetServer='login@server.domain.tld:'
 sftpBackupLocalMountPoint='/system_backups/system'
 encfsPassword='ENCFS PASSWORD'
 mailNotificationAddress='example@mail.org'
-encfsBackupData='/system_backups/system/encfsBackupData'
-encfsBackupMount='/system_backups/system/encfsBackupMount'
+encfsBackupData=${sftpBackupLocalMountPoint}'/encfsBackupData'
+encfsBackupMount=${sftpBackupLocalMountPoint}'/encfsBackupMount'
 
 # if nessesary, mount the sshfs target
 if [ -z "`/bin/mount | grep \"^$sftpBackupTargetServer on \"`" ]
 then
+    echo -e "mounting sshfs ...\n"
     /usr/bin/sshfs -o nonempty ${sftpBackupTargetServer} ${sftpBackupLocalMountPoint}
     (set -x; sleep 5)
 fi
@@ -48,6 +49,7 @@ then
 
     if [ -d "$encfsBackupData" ] && [ -d "$encfsBackupMount" ]
     then
+        echo -e "mounting encfs ...\n"
         ENCFSMESSAGE=`echo "${encfsPassword}" | encfs -i 10 -S $encfsBackupData $encfsBackupMount`
     else
 	mkdir -p $encfsBackupData $encfsBackupMount
@@ -72,7 +74,9 @@ fi
 # change the path for new backups to the encrypted volume
 if [ -n "${encfsPassword}" ]
 then
-        BACKUPDIR=${encfsBackupMount}'/BACKUP_'${HOSTNAME}'_'${BACKUPTIME}
+        echo -n "set new backup directory: "
+        BACKUPMAINDIR=${encfsBackupMount}
+        BACKUPDIR=${BACKUPMAINDIR}'/BACKUP_'${HOSTNAME}'_'`/bin/date +%Y-%m-%d_%Hh%Mm%Ss`
+        RESTOREFILE=${BACKUPDIR}"/restore_backup.sh"
+        echo $BACKUPDIR
 fi
-
-exit 0

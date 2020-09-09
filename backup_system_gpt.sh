@@ -40,10 +40,6 @@
 # den Suchpfad fuer die Programme erweitern (noetig bei Aufruf von cron)
 export PATH=$PATH:/sbin
 
-clear
-
-# set -x
-
 # KONFIGURATIONS-DATEI DEFINIEREN UND LADEN
 CONFIGPATH="/system_backups/"
 CONFIGFILE="backup_gpt.cfg"
@@ -52,12 +48,12 @@ source ${CONFIGPATH}/${CONFIGFILE} || exit -1
 # wait seconds before staring
 if [ -n "${randomTimeDiffer}" ]; then (set -x; sleep $((${RANDOM}/${randomTimeDiffer})) ); fi
 
+# start a mount script for the backup
+if [ -n "${startMountScript}" ]; then source "${startMountScript}"; fi
+
 # remove old backups
 if [ -n "${keepOnlyNumberOfBackups}" ]; then cd ${BACKUPMAINDIR} || exit; ls -1dh BACKUP_* | head -n -${keepOnlyNumberOfBackups} | xargs rm -rvf; fi
 if [ -n "${deleteBackupOlderThanDays}" ]; then for i in ${BACKUPMAINDIR}/BACKUP_*; do /usr/bin/find $i -maxdepth 0 -type d -mtime "+${deleteBackupOlderThanDays}" -exec rm -rfv {} \; ; done; fi
-
-# start a mount script for the backup
-if [ -n "${startMountScript}" ]; then "${startMountScript}"; fi 
 
 # Erklaerungen ausgeben
 echo 

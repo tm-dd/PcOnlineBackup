@@ -49,7 +49,6 @@ then
     if [ -d "$encfsBackupData" ] && [ -d "$encfsBackupMount" ]
     then
         ENCFSMESSAGE=`echo "${encfsPassword}" | encfs -i 10 -S $encfsBackupData $encfsBackupMount`
-        BACKUPDIR=${encfsBackupMount}'/BACKUP_'${HOSTNAME}'_'${BACKUPTIME}
     else
 	mkdir -p $encfsBackupData $encfsBackupMount
 	echo -e "\nPlease setup encfs (and use the password '$encfsPassword' ), now.\n"
@@ -68,6 +67,12 @@ then
         exit -1
     fi
     
+fi
+
+# change the path for new backups to the encrypted volume
+if [ -n "${encfsPassword}" ]
+then
+        BACKUPDIR=${encfsBackupMount}'/BACKUP_'${HOSTNAME}'_'${BACKUPTIME}
 fi
 
 exit 0

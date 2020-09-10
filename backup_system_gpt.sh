@@ -127,6 +127,7 @@ echo "... schreibe erste Bloecke sowie die Partitionen-Konfiguration in Computer
         echo '    fi' >> $RESTOREFILE
         
         # Partitionentabelle neu schreiben, pruefen und ausgeben
+        echo '    set -x' >> $RESTOREFILE
 		# echo '    dd if=first_10MB.dd of=$BACKUPDISC bs=10M' >> $RESTOREFILE
         echo '    parted -s $BACKUPDISC mklabel gpt' >> $RESTOREFILE
         echo '    sgdisk -g -l $BACKUPDIR/config/partitions.sgdisk $BACKUPDISC' >> $RESTOREFILE
@@ -172,7 +173,7 @@ echo "... erstelle LVM-Konfiguration fuer das Restore-Skript"
             echo "    lvcreate -l $CURRENTLE -n $LVNAME $VGNAME" >> $RESTOREFILE    # erstelle das LV
             echo "    lvchange -a y /dev/$VGNAME/$LVNAME" >> $RESTOREFILE           # aktiviere das LV (ansonsten ist es evtl. erst nach dem naechsten Reboot aktiv)
             echo "    sleep 3" >> $RESTOREFILE                                      # nur zur Sicherheit, dass die Device-Pfade auch angelegt werden
-            echo "    mkfs.$DEFAULT_FILESYSTEM_TYPE $i" >> $RESTOREFILE             # lege Dateisystem an
+            echo "    mkfs.$DEFAULT_FILESYSTEM_TYPE $i || exit -1" >> $RESTOREFILE  # lege Dateisystem an, oder breche ab
             echo "    tune2fs -c 10000 $i" >> $RESTOREFILE
         done    
 
@@ -184,9 +185,11 @@ echo "... erstelle die Konfiguration fuer das Restore-Skript von Partition:Verze
         echo '    do' >> $RESTOREFILE
         echo '        TARDEV=`echo $i | awk -F '"':' '{ print" '$1' "}'"'`' >> $RESTOREFILE
         echo '        TARTYPE=`echo $i | awk -F '"':' '{ print" '$3' "}'"'`' >> $RESTOREFILE
-        echo '        mkfs.$TARTYPE $TARDEV' >> $RESTOREFILE
+        echo '        mkfs.$TARTYPE $TARDEV || exit -1' >> $RESTOREFILE
         echo '        tune2fs -c 10000 $TARDEV' >> $RESTOREFILE
         echo '    done' >> $RESTOREFILE
+        echo '    set +x' >> $RESTOREFILE
+
 
         # beende den Abschnitt zum Erstellen der Partitionen + Formatierungen im Restore-Skript
         echo 'fi' >> $RESTOREFILE

@@ -34,14 +34,20 @@
 # append the path (nessesary for cron based backups)
 export PATH=$PATH:/sbin
 
-clear
-
-# set -x
-
 # read the config
 CONFIGPATH="/system_backups/"
 CONFIGFILE="backup_mbr.cfg"
 source ${CONFIGPATH}/${CONFIGFILE} || exit -1
+
+# wait seconds before staring
+if [ -n "${randomTimeDiffer}" ]; then (set -x; sleep $((${RANDOM}/${randomTimeDiffer})) ); fi
+
+# start a mount script for the backup
+if [ -n "${startMountScript}" ]; then source "${startMountScript}"; fi
+
+# remove old backups
+if [ -n "${keepOnlyNumberOfBackups}" ]; then cd ${BACKUPMAINDIR} || exit; ls -1dh BACKUP_* | head -n -${keepOnlyNumberOfBackups} | xargs rm -rvf; fi
+if [ -n "${deleteBackupOlderThanDays}" ]; then for i in ${BACKUPMAINDIR}/BACKUP_*; do /usr/bin/find $i -maxdepth 0 -type d -mtime "+${deleteBackupOlderThanDays}" -exec rm -rfv {} \; ; done; fi
 
 # print some messages for the user
 echo 
@@ -105,6 +111,7 @@ echo "... schreibe erste Bloecke sowie die Partitionen-Konfiguration in Computer
         echo '        echo "ERROR: IT LOOKS LIKE YOUR BACKUP IS ON THE SAME DEVICE LIKE YOU WANT TO REINSTALL NOW. I STOP NOW."' >> $RESTOREFILE
         echo '        exit -1' >> $RESTOREFILE
         echo '    fi' >> $RESTOREFILE
+        echo '    set -x' >> $RESTOREFILE
         echo '    sfdisk -R $BACKUPDISC' >> $RESTOREFILE
         echo '    dd if=first_10MB.dd of=$BACKUPDISC bs=10M' >> $RESTOREFILE
         echo '    sfdisk -f $BACKUPDISC < $BACKUPDIR/config/partitions.sfdisk' >> $RESTOREFILE
@@ -148,7 +155,7 @@ echo "... erstelle LVM-Konfiguration fuer das Restore-Skript"
             echo "    lvcreate -l $CURRENTLE -n $LVNAME $VGNAME" >> $RESTOREFILE    # create the LV
             echo "    lvchange -a y /dev/$VGNAME/$LVNAME" >> $RESTOREFILE           # activate the LV in the system
             echo "    sleep 3" >> $RESTOREFILE                                      # create the file system
-            echo "    mkfs.$DEFAULT_FILESYSTEM_TYPE $i" >> $RESTOREFILE             # change a higher file system check count
+            echo "    mkfs.$DEFAULT_FILESYSTEM_TYPE $i || exit -1" >> $RESTOREFILE             # change a higher file system check count
             echo "    tune2fs -c 10000 $i" >> $RESTOREFILE
         done    
 
@@ -160,7 +167,7 @@ echo "... erstelle die Konfiguration fuer das Restore-Skript von Partition:Verze
         echo '    do' >> $RESTOREFILE
         echo '        TARDEV=`echo $i | awk -F '"':' '{ print" '$1' "}'"'`' >> $RESTOREFILE
         echo '        TARTYPE=`echo $i | awk -F '"':' '{ print" '$3' "}'"'`' >> $RESTOREFILE
-        echo '        mkfs.$TARTYPE $TARDEV' >> $RESTOREFILE
+        echo '        mkfs.$TARTYPE $TARDEV || exit -1' >> $RESTOREFILE
         echo '        tune2fs -c 10000 $TARDEV' >> $RESTOREFILE
         echo '    done' >> $RESTOREFILE
 
@@ -262,6 +269,7 @@ echo "... erstelle die LVM-Backups"
             echo 'restore -rf $BACKUPDIR/'$LVNAME.lvm.dump >> $RESTOREFILE
             echo "cd" >> $RESTOREFILE
             echo "umount $RESTOREMNT" >> $RESTOREFILE
+            echo 'set +x' >> $RESTOREFILE
             echo '' >> $RESTOREFILE
             
         done    

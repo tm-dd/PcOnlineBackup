@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # save partitions and LVM volumes with snapshots on running systems
+# nessesary package on debian: bzip2 parted dump gdisk lvm2 tar
 #
 # Copyright (C) 2020 Thomas Mueller <developer@mueller-dresden.de>
 #
@@ -15,26 +16,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# some last changes and notes (german only):
-#
-# 		2013-10-01 -> Anpassungen wegen /dev/sda anstelle /dev/cciss/*
-#       2013-10-11 (und die Tage davor) -> grundlegende Aenderungen des Skriptes
-#       2013-10-14 kleine Aenderungen bzw. des tar-Abzuges und Infos an den Benutzer
-#       2013-10-23 lvremove des SNAPSHOTS in einer While-Schleife, da dies auf aurora mitunter viele manuelle Loeschversuche benoetige bis es klappte
-#       2013-10-24 Snapshots werden nun als READ-ONLY angelegt und die Konsistenz dessen ueber der Wert fuer "Allocated to snapshot" ermittelt 
-#		2013-11-13 nun neu: Abbruch, wenn $CONFIGFILE nicht auffindbar
-#		2013-11-21 kleine Verbesserung im Info-Text bei der GRUB-Wiederhestellung und Co.
-#       2014-09-16 Kommentarzeile zu Abhaengigkeiten aufgenommen
-#       2015-05-28 ergaenzen der Zeile "cp /etc/blkid.tab config/blkid.tab" um das Stueck " || /sbin/blkid > config/blkid.txt", da die Datei "/etc/blkid.tab" nicht mehr unter Debian 8 existierte
-#       2015-09-18 Anpassungen des Skriptes um GPT-basierte Partitionentabellen zu sichern
-#       2015-11-17 kleine Verbesserungen im Text des RESTORE-Skriptes
-#       2016-09-04 nun mit export den PATH ergaenzen um Aufruf per cron zu ermoeglichen, sowie Skript mount_backup_sshfs.sh bereitstellen
-#       2016-11-21 kleine Anpassungen zur Variable $CONFIGFILE - u.a. um sie anpassbarer zu machen, ohne Problem mit dem Restoreskript zu bekommen
-#       2016-11-22 kleine Aenderungen im erstellten Restoreskript (Anleitung der Schritte nach dem Restore verbessert)
-#       2017-01-10 den Dateinamen des $CONFIGFILE und $CONFIGPATH an allen Stellen im Skript angepasst
-#
-# 		Abhaengigkeiten: Unter debian 7 u.a.: apt-get install bzip2 parted dump
 #
 
 # den Suchpfad fuer die Programme erweitern (noetig bei Aufruf von cron)
@@ -70,9 +51,9 @@ sleep 5
 echo "... erstelle neues Verzeichnis fuer das aktuelle Backup"
 
         # erstelle das Backup-Verzeichnis und gehe dort hin
-	mkdir -p $BACKUPDIR
+        mkdir -p $BACKUPDIR
         cp ${CONFIGPATH}/${CONFIGFILE} ${BACKUPDIR}/${CONFIGFILE}        
-	cd $BACKUPDIR || (echo "ERROR: BACKUP DIRECTORY BACKUPDIR NOT FOUND !" exit -1)
+        cd $BACKUPDIR || (echo "ERROR: BACKUP DIRECTORY BACKUPDIR NOT FOUND !" exit -1)
 
 echo
 echo "... starte neue Datei $RESTOREFILE "
@@ -93,14 +74,11 @@ echo "... schreibe erste Bloecke sowie die Partitionen-Konfiguration in Computer
 
         mkdir -p config
 
-        # sichere die ersten Bloecke um auch den GRUB mit zu sichern
-        # dd if=$BACKUPDISC of=first_10MB.dd bs=10M count=1
-
         # sichere die Partitionen-Konfiguration        
-		sgdisk -b config/partitions.sgdisk $BACKUPDISC                      # sichern der GPT fuer das automatisches Restore
+        sgdisk -b config/partitions.sgdisk $BACKUPDISC                      # sichern der GPT fuer das automatisches Restore
         gdisk -l $BACKUPDISC > config/partition_informations_gdisk.txt      # sichern einiger Partitioneninfos als spaetere Referenz zum Nachlesen
-		parted $BACKUPDISC unit s print free > config/partitions.parted     # sichern einiger Partitioneninfos als spaetere Referenz zum Nachlesen
-		parted $BACKUPDISC print free >> config/partitions.parted           # sichern einiger Partitioneninfos als spaetere Referenz zum Nachlesen
+        parted $BACKUPDISC unit s print free > config/partitions.parted     # sichern einiger Partitioneninfos als spaetere Referenz zum Nachlesen
+        parted $BACKUPDISC print free >> config/partitions.parted           # sichern einiger Partitioneninfos als spaetere Referenz zum Nachlesen
         mount > config/mounted_partitions_durring_backup.txt                # sichern der aktiven Mounts als spaetere Referenz zum Nachlesen
         cp /proc/partitions config/proc_partitions.txt                      # sichern einiger Partitioneninfos als spaetere Referenz zum Nachlesen
         
@@ -128,7 +106,6 @@ echo "... schreibe erste Bloecke sowie die Partitionen-Konfiguration in Computer
         
         # Partitionentabelle neu schreiben, pruefen und ausgeben
         echo '    set -x' >> $RESTOREFILE
-		# echo '    dd if=first_10MB.dd of=$BACKUPDISC bs=10M' >> $RESTOREFILE
         echo '    parted -s $BACKUPDISC mklabel gpt' >> $RESTOREFILE
         echo '    sgdisk -g -l $BACKUPDIR/config/partitions.sgdisk $BACKUPDISC' >> $RESTOREFILE
         echo '    sleep 3' >> $RESTOREFILE
@@ -140,15 +117,15 @@ echo
 echo "... schreibe LVM-Konfiguration in Menschenlesbarer Form"
 
         # sichere die vollstaendigen LVM-Konfigurationen fuer evtl. spaetere manuell zu loesende Probleme
-		pvdisplay -v > config/pvdisplay.txt
-		vgdisplay -v > config/vgdisplay.txt
-		lvdisplay -v > config/lvdisplay.txt
-        cp /etc/blkid.tab config/blkid.tab || /sbin/blkid > config/blkid.txt
-        
+        pvdisplay -v > config/pvdisplay.txt
+        vgdisplay -v > config/vgdisplay.txt
+        lvdisplay -v > config/lvdisplay.txt
+        if [ -e "/etc/blkid.tab" ]; then cp /etc/blkid.tab config/blkid.tab; else blkid > config/blkid.txt; fi
+
 echo
 echo "... erstelle LVM-Konfiguration fuer das Restore-Skript"
 
-		# PV-KONFIGURATION im Restore-Skript erstellen
+        # PV-KONFIGURATION im Restore-Skript erstellen
         echo '    pvcreate $PVDEVS' >> $RESTOREFILE
 
         # VG-KONFIGURATION im Restore-Skript erstellen
@@ -299,51 +276,51 @@ echo "... erstelle die LVM-Backups"
             
         done    
 
-	    NameLVMSystem=`mount | grep "on / " | awk '{ print $1 }'`
+        NameLVMSystem=`mount | grep "on / " | awk '{ print $1 }'`
 
-            # Infos an den Benutzer geben, dass der Restore fertig ist und setzen des Execute-Flag zum Skript.
-            echo "echo ''" >> $RESTOREFILE
-            echo "echo 'THE RESTORE IS FINISHED.'" >> $RESTOREFILE
-            echo "echo '************************'" >> $RESTOREFILE
-            echo "echo 'Verify the whole system now.'" >> $RESTOREFILE
-            echo "echo 'PLease note: This restore DOES NOT RESTORE ALL FILES and PARTITIONS of the whole system.'" >> $RESTOREFILE
-            echo "echo 'The backup script was written to save only the system partitions for a disaster recovery.'" >> $RESTOREFILE
-            echo "echo 'Please use other backup system to restore missing files (e.g. big data files or HOME-Directorys).'" >> $RESTOREFILE
-            echo "echo 'In the case that you change the network cards (hardware), do not forget to update (or delete) the file: .../etc/udev/rules.d/70-persistent-net.rules'" >> $RESTOREFILE
-            echo "echo 'If you reinstall the partitions: Please remove missed partition from /etc/fstab and check the (new) UUIDs of the system.'" >> $RESTOREFILE
-            echo "echo 'WARNING: Systems, which using the device mapper can be have problems, by using partitions like /dev/sda1 in /etc/fstab. Please use the UUIDs of the partitions.'" >> $RESTOREFILE
-            echo "echo" >> $RESTOREFILE            
-            echo "echo 'PLEASE NOTE: In case of problems during booting: CHECK PARTITIONS in /etc/fstab AND REINSTALL THE BOOTLOADER (GRUB).'" >> $RESTOREFILE
-            echo "echo" >> $RESTOREFILE
-            echo "echo 'A short EXAMPLE (with grub2, the whole system is on /dev/sda, /boot/efi is on /dev/sda1, swap is on /dev/sda2 AND / is on the LVM device $NameLVMSystem):'" >> $RESTOREFILE
-            echo "echo" >> $RESTOREFILE
-            echo "echo 'To RESTORE the grub on a GPT partition, boot a Linux like the SystemRescueCD in EFI mode, before you run the following commands:'" >> $RESTOREFILE
-            echo "echo" >> $RESTOREFILE
-            echo "echo '    mkdir -p /mnt/custom'" >> $RESTOREFILE
-            echo "echo '    parted /dev/sda print      # to see the new partition numbers'" >> $RESTOREFILE
-            echo "echo '    mkswap /dev/sda2           # warning, use the right partition number here'" >> $RESTOREFILE
-            echo "echo '    less .../"${CONFIGFILE}"   # to see the old partition(s) and LVM name(s) of the backup for the next steps'" >> $RESTOREFILE
-            echo "echo '    mount $NameLVMSystem /mnt/custom'" >> $RESTOREFILE
-            echo "echo '    mount /dev/sda1 /mnt/custom/boot/efi'" >> $RESTOREFILE
-            echo "echo '    for i in dev sys proc; do mount -o bind /\$i /mnt/custom/\$i; done'" >> $RESTOREFILE
-            echo "echo '    chroot /mnt/custom /bin/bash'" >> $RESTOREFILE
-            echo "echo '    update-grub'" >> $RESTOREFILE
-            echo "echo '    grub-install'" >> $RESTOREFILE
-			echo "echo '    exit                       # to exit the chroot environment'" >> $RESTOREFILE
-            echo "echo '    blkid                      # to see the UUIDs and device names for changing the /etc/passwd'" >> $RESTOREFILE
-            echo "echo '    vim /mnt/custom/etc/fstab  # to check all partition names, DEACTIVATE unrecovered and UNNECESSARY partitions, change the UUIDs to the given names from the blkid command'" >> $RESTOREFILE	    
-            echo "echo '    vim /mnt/custom/etc/initramfs-tools/conf.d/resume  # OPTIONAL: change the UUID of the SWAP-Partition to the UUIDs from the blkid command'" >> $RESTOREFILE
-            echo "echo" >> $RESTOREFILE
-            echo '' >> $RESTOREFILE
-            
-            chmod 744 $RESTOREFILE
+        # Infos an den Benutzer geben, dass der Restore fertig ist und setzen des Execute-Flag zum Skript.
+        echo "echo ''" >> $RESTOREFILE
+        echo "echo 'THE RESTORE IS FINISHED.'" >> $RESTOREFILE
+        echo "echo '************************'" >> $RESTOREFILE
+        echo "echo 'Verify the whole system now.'" >> $RESTOREFILE
+        echo "echo 'PLease note: This restore DOES NOT RESTORE ALL FILES and PARTITIONS of the whole system.'" >> $RESTOREFILE
+        echo "echo 'The backup script was written to save only the system partitions for a disaster recovery.'" >> $RESTOREFILE
+        echo "echo 'Please use other backup system to restore missing files (e.g. big data files or HOME-Directorys).'" >> $RESTOREFILE
+        echo "echo 'In the case that you change the network cards (hardware), do not forget to update (or delete) the file: .../etc/udev/rules.d/70-persistent-net.rules'" >> $RESTOREFILE
+        echo "echo 'If you reinstall the partitions: Please remove missed partition from /etc/fstab and check the (new) UUIDs of the system.'" >> $RESTOREFILE
+        echo "echo 'WARNING: Systems, which using the device mapper can be have problems, by using partitions like /dev/sda1 in /etc/fstab. Please use the UUIDs of the partitions.'" >> $RESTOREFILE
+        echo "echo" >> $RESTOREFILE            
+        echo "echo 'PLEASE NOTE: In case of problems during booting: CHECK PARTITIONS in /etc/fstab AND REINSTALL THE BOOTLOADER (GRUB).'" >> $RESTOREFILE
+        echo "echo" >> $RESTOREFILE
+        echo "echo 'A short EXAMPLE (with grub2, the whole system is on /dev/sda, /boot/efi is on /dev/sda1, swap is on /dev/sda2 AND / is on the LVM device $NameLVMSystem):'" >> $RESTOREFILE
+        echo "echo" >> $RESTOREFILE
+        echo "echo 'To RESTORE the grub on a GPT partition, boot a Linux like the SystemRescueCD in EFI mode, before you run the following commands:'" >> $RESTOREFILE
+        echo "echo" >> $RESTOREFILE
+        echo "echo '    mkdir -p /mnt/custom'" >> $RESTOREFILE
+        echo "echo '    parted /dev/sda print      # to see the new partition numbers'" >> $RESTOREFILE
+        echo "echo '    mkswap /dev/sda2           # warning, use the right partition number here'" >> $RESTOREFILE
+        echo "echo '    less .../"${CONFIGFILE}"   # to see the old partition(s) and LVM name(s) of the backup for the next steps'" >> $RESTOREFILE
+        echo "echo '    mount $NameLVMSystem /mnt/custom'" >> $RESTOREFILE
+        echo "echo '    mount /dev/sda1 /mnt/custom/boot/efi'" >> $RESTOREFILE
+        echo "echo '    for i in dev sys proc; do mount -o bind /\$i /mnt/custom/\$i; done'" >> $RESTOREFILE
+        echo "echo '    chroot /mnt/custom /bin/bash'" >> $RESTOREFILE
+        echo "echo '    update-grub'" >> $RESTOREFILE
+        echo "echo '    grub-install'" >> $RESTOREFILE
+        echo "echo '    exit                       # to exit the chroot environment'" >> $RESTOREFILE
+        echo "echo '    blkid                      # to see the UUIDs and device names for changing the /etc/passwd'" >> $RESTOREFILE
+        echo "echo '    vim /mnt/custom/etc/fstab  # to check all partition names, DEACTIVATE unrecovered and UNNECESSARY partitions, change the UUIDs to the given names from the blkid command'" >> $RESTOREFILE	    
+        echo "echo '    vim /mnt/custom/etc/initramfs-tools/conf.d/resume  # OPTIONAL: change the UUID of the SWAP-Partition to the UUIDs from the blkid command'" >> $RESTOREFILE
+        echo "echo" >> $RESTOREFILE
+        echo '' >> $RESTOREFILE
+
+        chmod 744 $RESTOREFILE
 
 echo
 echo "ENDE DES BACKUP-LAUFES !!! - Folgende Dateien wurden erstellt:"
 echo
 
         # dem Benutzer die Dateien des Backups anzeigen
-		ls -lhR $BACKUPDIR
+        ls -lhR $BACKUPDIR
 
 echo
 echo "... erstelle nun noch die Pruefsummendatei und sende Sie auch per E-Mail an: $mailNotificationAddress"
@@ -352,7 +329,7 @@ echo "... erstelle nun noch die Pruefsummendatei und sende Sie auch per E-Mail a
         echo -e "DATEIEN DES BACKUPS DES SERVERS $HOSTNAME - STAND BACKUPTIME\n" > $BACKUPDIR/backup_files.txt
         ls -lhR $BACKUPDIR >> $BACKUPDIR/backup_files.txt
         echo -e "\nPRUEFSUMMEN DES BACKUPS:\n" >> $BACKUPDIR/backup_files.txt
-		find $BACKUPDIR -type f -exec /usr/bin/md5sum {} \; >> $BACKUPDIR/backup_files.txt
+        find $BACKUPDIR -type f -exec /usr/bin/md5sum {} \; >> $BACKUPDIR/backup_files.txt
         echo -e "\nKONFIGURATIONSDATEI DES BACKUPS:\n" >> $BACKUPDIR/backup_files.txt
         cat ${CONFIGPATH}/${CONFIGFILE} >> $BACKUPDIR/backup_files.txt
         cat $BACKUPDIR/backup_files.txt | /usr/bin/mail -s "md5summen der Backups von $HOSTNAME Stand: $BACKUPTIME" $mailNotificationAddress

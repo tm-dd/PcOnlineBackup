@@ -30,7 +30,7 @@ source ${CONFIGPATH}/${CONFIGFILE} || exit -1
 if [ -n "${randomTimeDiffer}" ]; then (set -x; sleep $((${RANDOM}/${randomTimeDiffer})) ); fi
 
 # start a mount script for the backup
-if [ -n "${startMountScript}" ]; then source "${startMountScript}"; fi
+if [ -n "${startBeforeBackup}" ]; then source "${startBeforeBackup}"; fi
 
 # remove old backups
 if [ -n "${keepOnlyNumberOfBackups}" ]; then cd ${BACKUPMAINDIR} || exit; ls -1dh BACKUP_* | head -n -${keepOnlyNumberOfBackups} | xargs rm -rvf; fi
@@ -275,6 +275,9 @@ echo "... erstelle die LVM-Backups"
             echo '' >> $RESTOREFILE
             
         done    
+
+# start a script at the end of backup, if the script exists
+if [ -n "${startAfterBackup}" ]; then set -x; source "${startAfterBackup}"; set +x; fi
 
         NameLVMSystem=`mount | grep "on / " | awk '{ print $1 }'`
 

@@ -277,7 +277,7 @@ echo "... erstelle die LVM-Backups"
         done    
 
 # start a script at the end of backup, if the script exists
-if [ -n "${startAfterBackup}" ]; then set -x; source "${startAfterBackup}"; set +x; fi
+if [ -n "${startAfterBackup}" ]; then set -x; ${startAfterBackup}; set +x; fi
 
         NameLVMSystem=`mount | grep "on / " | awk '{ print $1 }'`
 
